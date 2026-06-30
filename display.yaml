@@ -381,6 +381,7 @@ font:
     id: font_clock_date
     size: 40
     bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ª°·ºÀÁÂÃÇÉÊÍÓÔÕÚÜàáâãçéêíóôõúü"
   - file: "fontes/PlaywriteDEGrund-Regular.ttf"
     id: onest_12
     size: 12
