@@ -87,4 +87,4 @@ esphome run display.yaml
 ---
 
 ## Autor original
-2º SGT PAULESKI / DA-DCT / Santa Maria-RS
+1º SGT PAULESKI / DA-DCT / Santa Maria-RS
