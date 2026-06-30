@@ -560,6 +560,17 @@ lvgl:
 
     - id: pg_principal
       bg_color: 0x0A0908
+      on_gesture:
+        - if:
+            condition:
+              lambda: 'return lv_indev_get_gesture_dir(lv_indev_active()) == LV_DIR_LEFT;'
+            then:
+              - lvgl.page.show: pg_wifi
+        - if:
+            condition:
+              lambda: 'return lv_indev_get_gesture_dir(lv_indev_active()) == LV_DIR_RIGHT;'
+            then:
+              - lvgl.page.show: pg_home
       widgets:
         # Background Image
         - image:
