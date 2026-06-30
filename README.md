@@ -1,4 +1,4 @@
-# CER G5D P4 — Display ESPHome
+# Guition JC8012P4A1 — Display ESPHome
 
 ## Descrição do Projeto
 Este projeto configura o painel inteligente **Guition JC8012P4A1** (composto por um ESP32-P4 principal e um coprocessador ESP32-C6 para Wi-Fi/Bluetooth) rodando ESPHome com suporte a LVGL e touchscreen capacitivo. Foi desenvolvida uma interface rica com tema *Dark Glassmorphism*, contemplando uma tela inicial (screensaver) animada e uma tela de seleção de cafés completa.
