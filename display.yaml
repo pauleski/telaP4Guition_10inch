@@ -1,0 +1,1354 @@
+################################################################################
+#  CER G5D P4 — Display ESPHome Standalone
+#  Hardware : Guition JC8012P4A1C_I_W_Y  (ESP32-P4 + ESP32-C6)
+#  Display  : 10.1" MIPI-DSI IPS 800×1280 → landscape 1280×800
+#  Touch    : GSL3680 (I2C)
+#  ESPHome  : 2026.4.x  |  LVGL 9.x  |  ESP-IDF 5.x
+#  Autor    : 2º SGT PAULESKI / DA-DCT
+################################################################################
+
+substitutions:
+  device_name: "display_p4"
+  friendly_name: "display P4"
+
+esphome:
+  name: ${device_name}
+  friendly_name: ${friendly_name}
+  includes:
+    - wifi_manager.h
+    - <esp_wifi.h>
+  on_boot:
+    - priority: 600
+      then:
+        - lambda: |-
+            WifiManager::init();
+            WifiManager::load_credentials_to_ram();
+    - priority: 350
+      then:
+        - lambda: |-
+            if (strlen(WifiManager::nvs_ssid) > 0) {
+              esphome::wifi::WiFiAP sta;
+              sta.set_ssid(std::string(WifiManager::nvs_ssid));
+              sta.set_password(std::string(WifiManager::nvs_pass));
+              esphome::wifi::global_wifi_component->set_sta(sta);
+            }
+    - priority: -100
+      then:
+        - lambda: |-
+            WifiManager::apply_credentials_from_ram();
+    - priority: -200
+      then:
+        - lambda: |-
+            id(g_sessao_fase)  = 0;
+            id(g_sessao_ativa) = false;
+            id(g_timer_seg)    = 0;
+            id(g_reles_bitmap) = 0;
+
+esp32:
+  board: esp32-p4-evboard
+  cpu_frequency: 360MHz
+  flash_size: 16MB
+  framework:
+    type: esp-idf
+    advanced:
+      enable_idf_experimental_features: true
+
+psram:
+  speed: 200MHz
+
+esp32_hosted:
+  variant: ESP32C6
+  active_high: true
+  reset_pin: 54
+  cmd_pin: 19
+  clk_pin: 18
+  d0_pin: 14
+  d1_pin: 15
+  d2_pin: 16
+  d3_pin: 17
+
+wifi:
+  output_power: 8.5db
+  networks:
+    - ssid: "TEMP"
+      password: "TEMPPASSWORD"
+  ap:
+    ssid: "display-P4-AP"
+    password: "12345678"
+
+captive_portal:
+
+ota:
+  - platform: esphome
+    password: "ota"
+
+time:
+  - platform: sntp
+    id: sntp_time
+    timezone: "America/Sao_Paulo"
+
+logger:
+  hardware_uart: USB_SERIAL_JTAG
+  level: INFO
+
+esp_ldo:
+  - channel: 3
+    voltage: 2.5V
+
+i2c:
+  - id: i2c_touch
+    sda: GPIO7
+    scl: GPIO8
+    frequency: 400kHz
+
+output:
+  - platform: ledc
+    id: backlight_pwm
+    pin: GPIO23
+
+light:
+  - platform: monochromatic
+    id: backlight
+    name: "Backlight"
+    output: backlight_pwm
+    restore_mode: ALWAYS_ON
+
+display:
+  - platform: mipi_dsi
+    id: main_display
+    model: JC8012P4A1
+    reset_pin: GPIO27
+    auto_clear_enabled: false
+    update_interval: never
+
+
+external_components:
+  - source:
+      type: local
+      path: components
+    components: [gsl3680]
+
+touchscreen:
+  - platform: gsl3680
+    id: touch_panel
+    display: main_display
+    address: 0x40
+    interrupt_pin: GPIO21
+    reset_pin: GPIO22
+    transform:
+      swap_xy: false
+      mirror_x: true
+      mirror_y: false
+
+globals:
+  - id: g_sessao_ativa
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_sessao_fase
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: g_timer_seg
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: g_reles_bitmap
+    type: uint64_t
+    restore_value: no
+    initial_value: "0"
+  - id: g_sessao_numero
+    type: int
+    restore_value: no
+    initial_value: "7"
+  - id: g_duracao_seg
+    type: int
+    restore_value: no
+    initial_value: "1200"
+  - id: g_sessao_pausada
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_sessao_contador
+    type: int
+    restore_value: no
+    initial_value: "847"
+  - id: g_polaridade_par
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_spiffs_ok
+    type: bool
+    restore_value: no
+    initial_value: "true"
+  - id: g_cor_r
+    type: int
+    restore_value: no
+    initial_value: "153"
+  - id: g_cor_g
+    type: int
+    restore_value: no
+    initial_value: "102"
+  - id: g_cor_b
+    type: int
+    restore_value: no
+    initial_value: "255"
+  - id: g_piezo_hz
+    type: int
+    restore_value: no
+    initial_value: "500"
+  - id: g_ouro_hz
+    type: int
+    restore_value: no
+    initial_value: "963"
+  - id: g_mod_schumann
+    type: bool
+    restore_value: no
+    initial_value: "true"
+  - id: g_mod_prata
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_mod_led
+    type: bool
+    restore_value: no
+    initial_value: "true"
+  - id: g_mod_cristais
+    type: bool
+    restore_value: no
+    initial_value: "true"
+  - id: g_mod_freq_ouro
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_mod_piezo
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_wifi_ok
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_mega_ok
+    type: bool
+    restore_value: no
+    initial_value: "false"
+  - id: g_sens_prata_cor
+    type: int
+    restore_value: no
+    initial_value: "218"
+  - id: g_sens_prata_sup
+    type: int
+    restore_value: no
+    initial_value: "205"
+  - id: g_sens_prata_int
+    type: int
+    restore_value: no
+    initial_value: "194"
+  - id: g_sens_prata_inf
+    type: int
+    restore_value: no
+    initial_value: "211"
+  - id: g_sens_ouro_topo
+    type: int
+    restore_value: no
+    initial_value: "0"
+  - id: g_cafe_selecionado
+    type: int
+    restore_value: no
+    initial_value: "0"
+
+interval:
+  - interval: 1s
+    then:
+      - lambda: |-
+          // Update the clock in top-left
+          if (id(lbl_relogio) != nullptr) {
+            auto now = id(sntp_time).now();
+            char tbuf[64];
+            if (now.is_valid()) {
+              snprintf(tbuf, sizeof(tbuf), "%02d/%02d/%04d   %02d:%02d:%02d",
+                       now.day_of_month, now.month, now.year, now.hour, now.minute, now.second);
+            } else {
+              strncpy(tbuf, "--/--/----   --:--:--", sizeof(tbuf));
+            }
+            lv_label_set_text(id(lbl_relogio), tbuf);
+            
+            // Home page clock
+            if (id(lbl_home_time) != nullptr) {
+                if (now.is_valid()) {
+                    char tbuf2[16];
+                    snprintf(tbuf2, sizeof(tbuf2), "%02d:%02d", now.hour, now.minute);
+                    lv_label_set_text(id(lbl_home_time), tbuf2);
+                    
+                    const char* days[] = {"Domingo", "Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"};
+                    const char* months[] = {"Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"};
+                    
+                    if (now.day_of_week >= 1 && now.day_of_week <= 7) {
+                        lv_label_set_text(id(lbl_home_day), days[now.day_of_week - 1]);
+                    }
+                    if (now.month >= 1 && now.month <= 12) {
+                        char dbuf[32];
+                        snprintf(dbuf, sizeof(dbuf), "%s %02d", months[now.month - 1], now.day_of_month);
+                        lv_label_set_text(id(lbl_home_date), dbuf);
+                    }
+                    
+                    lv_arc_set_value(id(arc_clock_outer), (now.second * 100) / 60);
+                    lv_arc_set_value(id(arc_clock_inner), (now.minute * 100) / 60);
+                }
+            }
+          }
+
+          if (!id(g_sessao_ativa) || id(g_sessao_pausada)) return;
+          id(g_timer_seg)++;
+          if (id(g_timer_seg) >= id(g_duracao_seg)) {
+            id(g_sessao_ativa)   = false;
+            id(g_sessao_pausada) = false;
+            id(g_timer_seg)      = id(g_duracao_seg);
+            id(scr_fim_sessao).execute();
+            return;
+          }
+          if (id(bar_preparo_prog) != nullptr) {
+            int pct = (id(g_timer_seg) * 100) / id(g_duracao_seg);
+            lv_bar_set_value(id(bar_preparo_prog), pct, LV_ANIM_ON);
+          }
+          if (id(lbl_preparo_timer) != nullptr) {
+            int rest = id(g_duracao_seg) - id(g_timer_seg);
+            char buf[32];
+            snprintf(buf, sizeof(buf), "%d segundos restantes", rest);
+            lv_label_set_text(id(lbl_preparo_timer), buf);
+          }
+
+script:
+  - id: scr_refresh_ui
+    mode: single
+    then:
+      - lambda: ";"
+
+  - id: scr_fim_sessao
+    mode: single
+    then:
+      - lambda: |-
+          id(g_cafe_selecionado) = 0;
+          id(g_reles_bitmap) = 0;
+      - lvgl.page.show: pg_principal
+
+  - id: scr_toggle_rele
+    mode: queued
+    parameters:
+      idx: int
+    then:
+      - lambda: |-
+          id(g_reles_bitmap) ^= (1ULL << idx);
+
+image:
+  - file: "bg.png"
+    id: img_bg
+    type: RGB565
+  - file: "assets/ristreto.png"
+    id: img_ristretto
+    type: RGB
+    transparency: alpha_channel
+  - file: "assets/arpegio.png"
+    id: img_arpeggio
+    type: RGB
+    transparency: alpha_channel
+  - file: "assets/livanto.png"
+    id: img_livanto
+    type: RGB
+    transparency: alpha_channel
+  - file: "assets/volluto.png"
+    id: img_volluto
+    type: RGB
+    transparency: alpha_channel
+  - file: "assets/copo40.png"
+    id: img_copo
+    type: RGB
+    transparency: alpha_channel
+    resize: 50x50
+  - file: "assets/escolha.png"
+    id: img_escolha
+    type: RGB
+    transparency: alpha_channel
+
+font:
+  - file: "fontes/Inconsolata_Expanded-SemiBold.ttf"
+    id: font_clock_time
+    size: 140
+    bpp: 4
+    glyphs: "0123456789:"
+  - file: "fontes/Inconsolata_Expanded-SemiBold.ttf"
+    id: font_clock_date
+    size: 40
+    bpp: 4
+  - file: "fontes/PlaywriteDEGrund-Regular.ttf"
+    id: onest_12
+    size: 12
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ª°·ºÀÁÂÃÇÉÊÍÓÔÕÚÜàáâãçéêíóôõúü"
+  - file: "fontes/PlaywriteDEGrund-Regular.ttf"
+    id: onest_14
+    size: 14
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ª°·ºÀÁÂÃÇÉÊÍÓÔÕÚÜàáâãçéêíóôõúü"
+  - file: "fontes/PlaywriteDEGrund-Regular.ttf"
+    id: onest_16
+    size: 16
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ª°·ºÀÁÂÃÇÉÊÍÓÔÕÚÜàáâãçéêíóôõúü"
+  - file: "fontes/PlaywriteDEGrund-Regular.ttf"
+    id: onest_20
+    size: 20
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ª°·ºÀÁÂÃÇÉÊÍÓÔÕÚÜàáâãçéêíóôõúü"
+  - file: "fontes/PlaywriteDEGrund-Regular.ttf"
+    id: onest_24
+    size: 24
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ª°·ºÀÁÂÃÇÉÊÍÓÔÕÚÜàáâãçéêíóôõúü"
+  - file: "fontes/PlaywriteDEGrund-Regular.ttf"
+    id: onest_28
+    size: 28
+    bpp: 4
+    glyphs: " !\"#$%&'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMNOPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}~ª°·ºÀÁÂÃÇÉÊÍÓÔÕÚÜàáâãçéêíóôõúü"
+  - file: "fontes/PlaywriteDEGrund-Regular.ttf"
+    id: onest_40
+    size: 40
+    bpp: 4
+    glyphs: " 0123456789:%"
+
+lvgl:
+  id: lvgl_main
+  displays:
+    - main_display
+  touchscreens:
+    - touch_panel
+  color_depth: 16
+  buffer_size: 30%
+  rotation: 90
+  byte_order: little_endian
+
+  theme:
+    button:
+      bg_color: 0xEEF1F5
+      bg_opa: COVER
+      border_color: 0xDDE1E8
+      border_width: 1
+      radius: 8
+      text_color: 0x2C3340
+      pressed:
+        bg_color: 0x9966CB
+    label:
+      text_color: 0x2C3340
+    bar:
+      bg_color: 0xDDE1E8
+      indicator:
+        bg_color: 0x3B82F6
+
+  pages:
+    - id: pg_home
+      bg_color: 0x0A0908
+      widgets:
+        - image:
+            src: img_bg
+            x: 0
+            y: 0
+            width: 1280
+            height: 800
+
+        # Glass Card Container
+        - obj:
+            id: obj_home_clock_glass
+            x: 190
+            y: 75
+            width: 900
+            height: 650
+            bg_color: 0x000000
+            bg_opa: 50%
+            border_color: 0xFFFFFF
+            border_width: 1
+            border_opa: 20%
+            radius: 40
+            shadow_color: 0x000000
+            shadow_width: 60
+            shadow_opa: 60%
+            
+            widgets:
+              # Thick Arc (Outer) - Seconds
+              - arc:
+                  id: arc_clock_outer
+                  x: 350
+                  y: 75
+                  width: 500
+                  height: 500
+                  value: 0
+                  rotation: 270
+                  bg_opa: TRANSP
+                  arc_color: 0x444444
+                  arc_width: 16
+                  indicator:
+                    arc_color: 0xFF8C00
+                    arc_width: 16
+                  knob:
+                    bg_color: 0xFF8C00
+                    pad_all: 10
+                    radius: 24
+
+              # Thin Arc (Inner) - Minutes
+              - arc:
+                  id: arc_clock_inner
+                  x: 374
+                  y: 99
+                  width: 452
+                  height: 452
+                  value: 0
+                  rotation: 270
+                  bg_opa: TRANSP
+                  arc_color: 0x444444
+                  arc_width: 6
+                  indicator:
+                    arc_color: 0xFF8C00
+                    arc_width: 6
+                  knob:
+                    bg_color: 0xFF8C00
+                    pad_all: 6
+                    radius: 16
+
+              # Time Label
+              - label:
+                  id: lbl_home_time
+                  x: 350
+                  y: 260
+                  width: 500
+                  text: "10:49"
+                  text_align: CENTER
+                  text_font: font_clock_time
+                  text_color: 0xFFFFFF
+
+              # Day Label
+              - label:
+                  id: lbl_home_day
+                  x: 40
+                  y: 280
+                  width: 270
+                  text: "Domingo"
+                  text_align: RIGHT
+                  text_font: font_clock_date
+                  text_color: 0xAAAAAA
+
+              # Date Label
+              - label:
+                  id: lbl_home_date
+                  x: 40
+                  y: 330
+                  width: 270
+                  text: "Mar 19"
+                  text_align: RIGHT
+                  text_font: font_clock_date
+                  text_color: 0xFFFFFF
+
+        # Clickable layer over everything to transition
+        - obj:
+            x: 0
+            y: 0
+            width: 1280
+            height: 800
+            bg_opa: TRANSP
+            border_width: 0
+            on_click:
+              - lvgl.page.show: pg_principal
+
+    - id: pg_principal
+      bg_color: 0x0A0908
+      widgets:
+        # Background Image
+        - image:
+            src: img_bg
+            x: 0
+            y: 0
+            width: 1280
+            height: 800
+
+        # Date & Time in top-left
+        - label:
+            id: lbl_relogio
+            x: 20
+            y: 755
+            width: 400
+            height: 30
+            text: "--/--/----   --:--:--"
+            text_font: onest_16
+            text_color: 0xFFFFFF
+            text_align: LEFT
+
+        # Wi-Fi Button Container
+        - obj:
+            x: 0
+            y: 5
+            width: 1280
+            height: 100
+            bg_opa: TRANSP
+            border_width: 0
+            radius: 0
+            scrollbar_mode: "OFF"
+            widgets:
+              - image:
+                  src: img_escolha
+                  x: 440
+                  y: 0
+              - button:
+                  x: 1150
+                  y: 10
+                  width: 80
+                  height: 36
+                  bg_color: 0x161513
+                  border_color: 0x332E2A
+                  border_width: 1
+                  radius: 8
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "WI-FI"
+                        text_font: onest_14
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lvgl.page.show: pg_wifi
+
+        # Card 1: Ristretto
+        - obj:
+            x: 60
+            y: 140
+            width: 260
+            height: 540
+            bg_color: 0x1A1A1A
+            bg_opa: 50%
+            border_color: 0x2A2A2A
+            border_width: 1
+            radius: 16
+            pad_all: 0
+            shadow_color: 0xFFD700
+            shadow_width: 25
+            shadow_spread: 3
+            shadow_opa: 80%
+            shadow_offset_x: 0
+            shadow_offset_y: 0
+            widgets:
+              - image:
+                  src: img_ristretto
+                  align: TOP_MID
+                  y: 10
+              - label:
+                  x: 10
+                  y: 115
+                  width: 240
+                  text: "RISTRETTO"
+                  text_font: onest_24
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 155
+                  width: 240
+                  text: "Ispirazione Ristretto Italiano"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 190
+                  width: 240
+                  text: "Intenso e Marcante"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - obj:
+                  x: 20
+                  y: 230
+                  width: 220
+                  height: 1
+                  bg_color: 0x2C2C2C
+                  border_width: 0
+              - label:
+                  x: 35
+                  y: 245
+                  width: 200
+                  text: "Intensidade: 10"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 275
+                  width: 200
+                  text: "Notas: Cacau e Torrado"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 305
+                  width: 200
+                  text: "Origem: América do Sul e Central"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - image:
+                  src: img_copo
+                  align: TOP_MID
+                  y: 345
+              - label:
+                  align: TOP_MID
+                  y: 405
+                  width: 240
+                  text: "Ristretto (25ml)"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - button:
+                  x: 20
+                  y: 470
+                  width: 220
+                  height: 48
+                  bg_color: 0x2A75D3
+                  radius: 24
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "SELECIONAR"
+                        text_font: onest_14
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 1;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 25;
+                        id(g_reles_bitmap) = (1ULL << 0);
+                        lv_label_set_text(id(lbl_preparo_nome), "RISTRETTO");
+                    - lvgl.page.show: pg_preparo
+
+        # Card 2: Arpeggio
+        - obj:
+            x: 360
+            y: 140
+            width: 260
+            height: 540
+            bg_color: 0x1A1A1A
+            bg_opa: 50%
+            border_color: 0x2A2A2A
+            border_width: 1
+            radius: 16
+            pad_all: 0
+            shadow_color: 0xFFD700
+            shadow_width: 25
+            shadow_spread: 3
+            shadow_opa: 80%
+            shadow_offset_x: 0
+            shadow_offset_y: 0
+            widgets:
+              - image:
+                  src: img_arpeggio
+                  align: TOP_MID
+                  y: 10
+              - label:
+                  x: 10
+                  y: 115
+                  width: 240
+                  text: "ARPEGGIO"
+                  text_font: onest_24
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 155
+                  width: 240
+                  text: "Ispirazione Firenze Arpeggio"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 190
+                  width: 240
+                  text: "Crema e Encorpado"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - obj:
+                  x: 20
+                  y: 230
+                  width: 220
+                  height: 1
+                  bg_color: 0x2C2C2C
+                  border_width: 0
+              - label:
+                  x: 35
+                  y: 245
+                  width: 200
+                  text: "Intensidade: 9"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 275
+                  width: 200
+                  text: "Notas: Cacau e Amadeirado"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 305
+                  width: 200
+                  text: "Origem: América do Sul e Central"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - image:
+                  src: img_copo
+                  align: TOP_MID
+                  y: 345
+              - label:
+                  align: TOP_MID
+                  y: 405
+                  width: 240
+                  text: "Espresso (40ml)"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - button:
+                  x: 20
+                  y: 470
+                  width: 220
+                  height: 48
+                  bg_color: 0x2A75D3
+                  radius: 24
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "SELECIONAR"
+                        text_font: onest_14
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 2;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 35;
+                        id(g_reles_bitmap) = (1ULL << 1);
+                        lv_label_set_text(id(lbl_preparo_nome), "ARPEGGIO");
+                    - lvgl.page.show: pg_preparo
+
+        # Card 3: Livanto
+        - obj:
+            x: 660
+            y: 140
+            width: 260
+            height: 540
+            bg_color: 0x1A1A1A
+            bg_opa: 50%
+            border_color: 0x2A2A2A
+            border_width: 1
+            radius: 16
+            pad_all: 0
+            shadow_color: 0xFFD700
+            shadow_width: 25
+            shadow_spread: 3
+            shadow_opa: 80%
+            shadow_offset_x: 0
+            shadow_offset_y: 0
+            widgets:
+              - image:
+                  src: img_livanto
+                  align: TOP_MID
+                  y: 10
+              - label:
+                  x: 10
+                  y: 115
+                  width: 240
+                  text: "LIVANTO"
+                  text_font: onest_24
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 155
+                  width: 240
+                  text: "Ispirazione Genova Livanto"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 190
+                  width: 240
+                  text: "Equilibrado e Redondo"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - obj:
+                  x: 20
+                  y: 230
+                  width: 220
+                  height: 1
+                  bg_color: 0x2C2C2C
+                  border_width: 0
+              - label:
+                  x: 35
+                  y: 245
+                  width: 200
+                  text: "Intensidade: 6"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 275
+                  width: 200
+                  text: "Notas: Caramelo e Cereais"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 305
+                  width: 200
+                  text: "Origem: América Central e do Sul"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - image:
+                  src: img_copo
+                  align: TOP_MID
+                  y: 345
+              - label:
+                  align: TOP_MID
+                  y: 405
+                  width: 240
+                  text: "Espresso (40ml)"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - button:
+                  x: 20
+                  y: 470
+                  width: 220
+                  height: 48
+                  bg_color: 0x2A75D3
+                  radius: 24
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "SELECIONAR"
+                        text_font: onest_14
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 3;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 35;
+                        id(g_reles_bitmap) = (1ULL << 2);
+                        lv_label_set_text(id(lbl_preparo_nome), "LIVANTO");
+                    - lvgl.page.show: pg_preparo
+
+        # Card 4: Volluto
+        - obj:
+            x: 960
+            y: 140
+            width: 260
+            height: 540
+            bg_color: 0x1A1A1A
+            bg_opa: 50%
+            border_color: 0x2A2A2A
+            border_width: 1
+            radius: 16
+            pad_all: 0
+            shadow_color: 0xFFD700
+            shadow_width: 25
+            shadow_spread: 3
+            shadow_opa: 80%
+            shadow_offset_x: 0
+            shadow_offset_y: 0
+            widgets:
+              - image:
+                  src: img_volluto
+                  align: TOP_MID
+                  y: 10
+              - label:
+                  x: 10
+                  y: 115
+                  width: 240
+                  text: "VOLLUTO"
+                  text_font: onest_24
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 155
+                  width: 240
+                  text: "Volluto"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - label:
+                  x: 10
+                  y: 190
+                  width: 240
+                  text: "Doce e Frutado"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - obj:
+                  x: 20
+                  y: 230
+                  width: 220
+                  height: 1
+                  bg_color: 0x2C2C2C
+                  border_width: 0
+              - label:
+                  x: 35
+                  y: 245
+                  width: 200
+                  text: "Intensidade: 4"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 275
+                  width: 200
+                  text: "Notas: Biscoito e Frutas"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - label:
+                  x: 35
+                  y: 305
+                  width: 200
+                  text: "Origem: Brasil e Colômbia"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: LEFT
+              - image:
+                  src: img_copo
+                  align: TOP_MID
+                  y: 345
+              - label:
+                  align: TOP_MID
+                  y: 405
+                  width: 240
+                  text: "Espresso (40ml)"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+                  text_align: CENTER
+              - button:
+                  x: 20
+                  y: 470
+                  width: 220
+                  height: 48
+                  bg_color: 0x2A75D3
+                  radius: 24
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "SELECIONAR"
+                        text_font: onest_14
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 4;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 35;
+                        id(g_reles_bitmap) = (1ULL << 3);
+                        lv_label_set_text(id(lbl_preparo_nome), "VOLLUTO");
+                    - lvgl.page.show: pg_preparo
+
+        # Footer
+        - label:
+            x: 880
+            y: 755
+            width: 380
+            text: "Delta Intelligent Systems"
+            text_font: onest_16
+            text_color: 0xFFFFFF
+            text_align: RIGHT
+    - id: pg_wifi
+      bg_color: 0x0A0908
+      on_load:
+        - lambda: |-
+            auto *wm = WifiManager::instance;
+            lv_obj_set_scroll_dir(id(wm_scroll), LV_DIR_VER);
+            lv_obj_set_style_bg_color(id(wm_scroll), lv_color_hex(0x161513), 0);
+            wm->lv_scroll  = id(wm_scroll);
+            wm->lv_status  = id(wm_status);
+            wm->lv_sel_lbl = id(wm_sel_lbl);
+            wm->lv_pass_ta = id(wm_pass_ta);
+            wm->kb.setup(id(kb_container), id(wm_pass_ta));
+      widgets:
+        # Background Image
+        - image:
+            src: img_bg
+            x: 0
+            y: 0
+            width: 1280
+            height: 800
+
+        # Header bar
+        - obj:
+            x: 0
+            y: 0
+            width: 1280
+            height: 60
+            bg_color: 0x141210
+            bg_opa: 80%
+            border_width: 0
+            radius: 0
+            pad_all: 8
+            widgets:
+              - label:
+                  x: 20
+                  y: 14
+                  text: "CONFIGURAÇÃO WI-FI"
+                  text_font: onest_20
+                  text_color: 0xFFFFFF
+              - button:
+                  x: 1100
+                  y: 10
+                  width: 160
+                  height: 40
+                  bg_color: 0x1E1B18
+                  border_color: 0x332E2A
+                  border_width: 1
+                  radius: 8
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "< VOLTAR"
+                        text_font: onest_14
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lvgl.page.show: pg_principal
+
+        # Available networks list
+        - obj:
+            x: 8
+            y: 70
+            width: 580
+            height: 720
+            bg_color: 0x161513
+            bg_opa: 80%
+            border_color: 0x2A2A2A
+            border_width: 1
+            radius: 10
+            pad_all: 12
+            widgets:
+              - label:
+                  x: 0
+                  y: 0
+                  text: "REDES DISPONÍVEIS"
+                  text_font: onest_16
+                  text_color: 0xFFFFFF
+              - button:
+                  x: 0
+                  y: 28
+                  width: 180
+                  height: 40
+                  bg_color: 0x1F6FEB
+                  radius: 20
+                  widgets:
+                    - label:
+                        align: CENTER
+                        text: "ESCANEAR"
+                        text_font: onest_14
+                        text_color: 0xFFFFFF
+                  on_click:
+                    - lambda: |-
+                        WifiManager::instance->start_scan();
+              - label:
+                  id: wm_status
+                  x: 196
+                  y: 36
+                  width: 360
+                  text: "Toque em ESCANEAR para buscar redes."
+                  text_font: onest_12
+                  text_color: 0xFFFFFF
+              - obj:
+                  id: wm_scroll
+                  x: 0
+                  y: 80
+                  width: 556
+                  height: 620
+                  bg_color: 0x1A1A1A
+                  border_width: 0
+                  pad_all: 0
+
+        # Selected Network details
+        - obj:
+            x: 596
+            y: 70
+            width: 676
+            height: 200
+            bg_color: 0x161513
+            bg_opa: 80%
+            border_color: 0x2A2A2A
+            border_width: 1
+            radius: 10
+            pad_all: 14
+            widgets:
+              - label:
+                  x: 0
+                  y: 0
+                  text: "REDE SELECIONADA"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+              - label:
+                  id: wm_sel_lbl
+                  x: 0
+                  y: 22
+                  width: 640
+                  text: "(nenhuma)"
+                  text_font: onest_16
+                  text_color: 0x1F6FEB
+              - label:
+                  x: 0
+                  y: 60
+                  text: "SENHA"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+              - textarea:
+                  id: wm_pass_ta
+                  x: 0
+                  y: 82
+                  width: 640
+                  height: 50
+                  placeholder_text: "Digite a senha Wi-Fi"
+                  one_line: true
+                  password_mode: true
+
+        - button:
+            x: 596
+            y: 282
+            width: 320
+            height: 56
+            bg_color: 0x238636
+            radius: 28
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "CONECTAR"
+                  text_font: onest_16
+                  text_color: 0xFFFFFF
+            on_click:
+              - lambda: |-
+                  WifiManager::instance->connect();
+
+        - button:
+            x: 926
+            y: 282
+            width: 320
+            height: 56
+            bg_color: 0x21262D
+            border_color: 0x30363D
+            border_width: 1
+            radius: 28
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "LIMPAR SENHA"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+            on_click:
+              - lambda: |-
+                  if (id(wm_pass_ta))
+                    lv_textarea_set_text(id(wm_pass_ta), "");
+
+        - obj:
+            id: kb_container
+            x: 596
+            y: 350
+            width: 676
+            height: 440
+            bg_color: 0x161513
+            bg_opa: 80%
+            border_color: 0x2A2A2A
+            border_width: 1
+            radius: 10
+            pad_all: 0
+
+    - id: pg_preparo
+      bg_color: 0x0A0908
+      widgets:
+        # Background Image
+        - image:
+            src: img_bg
+            x: 0
+            y: 0
+            width: 1280
+            height: 800
+
+        - label:
+            x: 0
+            y: 180
+            width: 1280
+            text: "PREPARANDO SEU CAFÉ..."
+            text_font: onest_20
+            text_color: 0xFFFFFF
+            text_align: CENTER
+
+        - label:
+            id: lbl_preparo_nome
+            x: 0
+            y: 230
+            width: 1280
+            text: "RISTRETTO"
+            text_font: onest_40
+            text_color: 0xFFFFFF
+            text_align: CENTER
+
+        - bar:
+            id: bar_preparo_prog
+            x: 340
+            y: 360
+            width: 600
+            height: 16
+            bg_color: 0x1E1E1E
+            indicator:
+              bg_color: 0x1F6FEB
+            value: 0
+            min_value: 0
+            max_value: 100
+
+        - label:
+            id: lbl_preparo_timer
+            x: 0
+            y: 400
+            width: 1280
+            text: "30 segundos restantes"
+            text_font: onest_14
+            text_color: 0xFFFFFF
+            text_align: CENTER
+
+        - button:
+            x: 540
+            y: 500
+            width: 200
+            height: 50
+            bg_color: 0xDC2626
+            radius: 25
+            widgets:
+              - label:
+                  align: CENTER
+                  text: "CANCELAR"
+                  text_font: onest_14
+                  text_color: 0xFFFFFF
+            on_click:
+              - lambda: |-
+                  id(g_sessao_ativa) = false;
+                  id(g_sessao_pausada) = false;
+                  id(g_timer_seg) = 0;
+                  id(g_cafe_selecionado) = 0;
+                  id(g_reles_bitmap) = 0;
+              - lvgl.page.show: pg_principal
