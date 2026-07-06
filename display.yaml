@@ -101,10 +101,36 @@ i2c:
     scl: GPIO8
     frequency: 400kHz
 
+servo:
+  - id: servo_cafe_1
+    output: pwm_servo_1
+  - id: servo_cafe_2
+    output: pwm_servo_2
+  - id: servo_cafe_3
+    output: pwm_servo_3
+  - id: servo_cafe_4
+    output: pwm_servo_4
+
 output:
   - platform: ledc
     id: backlight_pwm
     pin: GPIO23
+  - platform: ledc
+    id: pwm_servo_1
+    pin: GPIO2
+    frequency: 50Hz
+  - platform: ledc
+    id: pwm_servo_2
+    pin: GPIO3
+    frequency: 50Hz
+  - platform: ledc
+    id: pwm_servo_3
+    pin: GPIO4
+    frequency: 50Hz
+  - platform: ledc
+    id: pwm_servo_4
+    pin: GPIO5
+    frequency: 50Hz
 
 light:
   - platform: monochromatic
@@ -308,16 +334,6 @@ interval:
             id(scr_fim_sessao).execute();
             return;
           }
-          if (id(bar_preparo_prog) != nullptr) {
-            int pct = (id(g_timer_seg) * 100) / id(g_duracao_seg);
-            lv_bar_set_value(id(bar_preparo_prog), pct, LV_ANIM_ON);
-          }
-          if (id(lbl_preparo_timer) != nullptr) {
-            int rest = id(g_duracao_seg) - id(g_timer_seg);
-            char buf[32];
-            snprintf(buf, sizeof(buf), "%d segundos restantes", rest);
-            lv_label_set_text(id(lbl_preparo_timer), buf);
-          }
 
 script:
   - id: scr_refresh_ui
@@ -340,6 +356,54 @@ script:
     then:
       - lambda: |-
           id(g_reles_bitmap) ^= (1ULL << idx);
+
+  - id: scr_libera_cafe_1
+    mode: restart
+    then:
+      - servo.write:
+          id: servo_cafe_1
+          level: 100%
+      - delay: 10s
+      - servo.write:
+          id: servo_cafe_1
+          level: -100%
+      - lvgl.page.show: pg_home
+
+  - id: scr_libera_cafe_2
+    mode: restart
+    then:
+      - servo.write:
+          id: servo_cafe_2
+          level: 100%
+      - delay: 10s
+      - servo.write:
+          id: servo_cafe_2
+          level: -100%
+      - lvgl.page.show: pg_home
+
+  - id: scr_libera_cafe_3
+    mode: restart
+    then:
+      - servo.write:
+          id: servo_cafe_3
+          level: 100%
+      - delay: 10s
+      - servo.write:
+          id: servo_cafe_3
+          level: -100%
+      - lvgl.page.show: pg_home
+
+  - id: scr_libera_cafe_4
+    mode: restart
+    then:
+      - servo.write:
+          id: servo_cafe_4
+          level: 100%
+      - delay: 10s
+      - servo.write:
+          id: servo_cafe_4
+          level: -100%
+      - lvgl.page.show: pg_home
 
 image:
   - file: "bg.png"
@@ -732,11 +796,7 @@ lvgl:
                   on_click:
                     - lambda: |-
                         id(g_cafe_selecionado) = 1;
-                        id(g_sessao_ativa) = true;
-                        id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 25;
-                        id(g_reles_bitmap) = (1ULL << 0);
-                        lv_label_set_text(id(lbl_preparo_nome), "RISTRETTO");
+                    - script.execute: scr_libera_cafe_1
                     - lvgl.page.show: pg_preparo
 
         # Card 2: Arpeggio
@@ -845,11 +905,7 @@ lvgl:
                   on_click:
                     - lambda: |-
                         id(g_cafe_selecionado) = 2;
-                        id(g_sessao_ativa) = true;
-                        id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 35;
-                        id(g_reles_bitmap) = (1ULL << 1);
-                        lv_label_set_text(id(lbl_preparo_nome), "ARPEGGIO");
+                    - script.execute: scr_libera_cafe_2
                     - lvgl.page.show: pg_preparo
 
         # Card 3: Livanto
@@ -958,11 +1014,7 @@ lvgl:
                   on_click:
                     - lambda: |-
                         id(g_cafe_selecionado) = 3;
-                        id(g_sessao_ativa) = true;
-                        id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 35;
-                        id(g_reles_bitmap) = (1ULL << 2);
-                        lv_label_set_text(id(lbl_preparo_nome), "LIVANTO");
+                    - script.execute: scr_libera_cafe_3
                     - lvgl.page.show: pg_preparo
 
         # Card 4: Volluto
@@ -1071,11 +1123,7 @@ lvgl:
                   on_click:
                     - lambda: |-
                         id(g_cafe_selecionado) = 4;
-                        id(g_sessao_ativa) = true;
-                        id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 35;
-                        id(g_reles_bitmap) = (1ULL << 3);
-                        lv_label_set_text(id(lbl_preparo_nome), "VOLLUTO");
+                    - script.execute: scr_libera_cafe_4
                     - lvgl.page.show: pg_preparo
 
         # Footer
@@ -1303,64 +1351,9 @@ lvgl:
 
         - label:
             x: 0
-            y: 180
+            y: 350
             width: 1280
-            text: "PREPARANDO SEU CAFÉ..."
-            text_font: onest_20
-            text_color: 0xFFFFFF
-            text_align: CENTER
-
-        - label:
-            id: lbl_preparo_nome
-            x: 0
-            y: 230
-            width: 1280
-            text: "RISTRETTO"
+            text: "CÁPSULA LIBERADA"
             text_font: onest_40
             text_color: 0xFFFFFF
             text_align: CENTER
-
-        - bar:
-            id: bar_preparo_prog
-            x: 340
-            y: 360
-            width: 600
-            height: 16
-            bg_color: 0x1E1E1E
-            indicator:
-              bg_color: 0x1F6FEB
-            value: 0
-            min_value: 0
-            max_value: 100
-
-        - label:
-            id: lbl_preparo_timer
-            x: 0
-            y: 400
-            width: 1280
-            text: "30 segundos restantes"
-            text_font: onest_14
-            text_color: 0xFFFFFF
-            text_align: CENTER
-
-        - button:
-            x: 540
-            y: 500
-            width: 200
-            height: 50
-            bg_color: 0xDC2626
-            radius: 25
-            widgets:
-              - label:
-                  align: CENTER
-                  text: "CANCELAR"
-                  text_font: onest_14
-                  text_color: 0xFFFFFF
-            on_click:
-              - lambda: |-
-                  id(g_sessao_ativa) = false;
-                  id(g_sessao_pausada) = false;
-                  id(g_timer_seg) = 0;
-                  id(g_cafe_selecionado) = 0;
-                  id(g_reles_bitmap) = 0;
-              - lvgl.page.show: pg_principal
