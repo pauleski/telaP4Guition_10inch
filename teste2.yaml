@@ -105,9 +105,7 @@ i2c:
     sda: GPIO33
     scl: GPIO32
     frequency: 100kHz
-    scan: false        # CRITICO: sem pull-ups externos no barramento, o scan de boot
-                       # trava a inicializacao (prioridade BUS) antes do display/backlight.
-                       # Reative apenas com o PCA9685 conectado e alimentado.
+    scan: false   # barramento sem pull-ups quando o modulo esta desconectado
 
 pca9685:
   - id: pca9685_hub
@@ -119,34 +117,6 @@ output:
   - platform: ledc
     id: backlight_pwm
     pin: GPIO23
-
-
-  - platform: pca9685
-    pca9685_id: pca9685_hub
-    id: servo_out_1
-    channel: 0
-  - platform: pca9685
-    pca9685_id: pca9685_hub
-    id: servo_out_2
-    channel: 1
-  - platform: pca9685
-    pca9685_id: pca9685_hub
-    id: servo_out_3
-    channel: 2
-  - platform: pca9685
-    pca9685_id: pca9685_hub
-    id: servo_out_4
-    channel: 3
-
-servo:
-  - id: servo_1
-    output: servo_out_1
-  - id: servo_2
-    output: servo_out_2
-  - id: servo_3
-    output: servo_out_3
-  - id: servo_4
-    output: servo_out_4
 
 light:
   - platform: monochromatic
@@ -342,11 +312,6 @@ interval:
             }
           }
 
-          if (id(pca9685_hub).is_failed()) {
-            if (id(lbl_alerta_hardware) != nullptr) {
-                lv_label_set_text(id(lbl_alerta_hardware), "⚠️ ERRO: Módulo PCA9685 Desconectado! Verifique fiação no FPC4.");
-            }
-          }
           if (!id(g_sessao_ativa) || id(g_sessao_pausada)) return;
           id(g_timer_seg)++;
           if (id(g_timer_seg) >= id(g_duracao_seg)) {
@@ -377,13 +342,9 @@ script:
     mode: single
     then:
       - lambda: |-
-          if (id(g_reles_bitmap) & (1ULL << 0)) id(servo_1).write(-1.0);
-          if (id(g_reles_bitmap) & (1ULL << 1)) id(servo_2).write(-1.0);
-          if (id(g_reles_bitmap) & (1ULL << 2)) id(servo_3).write(-1.0);
-          if (id(g_reles_bitmap) & (1ULL << 3)) id(servo_4).write(-1.0);
           id(g_cafe_selecionado) = 0;
           id(g_reles_bitmap) = 0;
-      - lvgl.page.show: pg_home
+      - lvgl.page.show: pg_principal
 
   - id: scr_toggle_rele
     mode: queued
@@ -509,13 +470,6 @@ lvgl:
             width: 1280
             height: 800
 
-        - label:
-            id: lbl_alerta_hardware
-            text: ""
-            text_font: onest_14
-            text_color: 0xFF0000
-            align: TOP_MID
-            y: 20
         # Glass Card Container
         - obj:
             id: obj_home_clock_glass
@@ -789,24 +743,14 @@ lvgl:
                         text_font: onest_14
                         text_color: 0xFFFFFF
                   on_click:
-                    - if:
-                        condition:
-                          lambda: 'return !id(g_sessao_ativa);'
-                        then:
-                          - lambda: |-
-                              id(g_cafe_selecionado) = 1;
-                              id(g_sessao_ativa) = true;
-                              id(g_sessao_pausada) = false;
-                              id(g_timer_seg) = 0;
-                              id(g_duracao_seg) = 10;
-                              id(g_reles_bitmap) = (1ULL << 0);
-                              id(servo_1).write(1.0);
-                              lv_label_set_text(id(lbl_preparo_nome), "RISTRETTO");
-                              char buf[32];
-                              snprintf(buf, sizeof(buf), "%d segundos restantes", id(g_duracao_seg));
-                              lv_label_set_text(id(lbl_preparo_timer), buf);
-                              lv_bar_set_value(id(bar_preparo_prog), 0, LV_ANIM_OFF);
-                          - lvgl.page.show: pg_preparo
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 1;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 25;
+                        id(g_reles_bitmap) = (1ULL << 0);
+                        lv_label_set_text(id(lbl_preparo_nome), "RISTRETTO");
+                    - lvgl.page.show: pg_preparo
 
         # Card 2: Arpeggio
         - obj:
@@ -912,24 +856,14 @@ lvgl:
                         text_font: onest_14
                         text_color: 0xFFFFFF
                   on_click:
-                    - if:
-                        condition:
-                          lambda: 'return !id(g_sessao_ativa);'
-                        then:
-                          - lambda: |-
-                              id(g_cafe_selecionado) = 2;
-                              id(g_sessao_ativa) = true;
-                              id(g_sessao_pausada) = false;
-                              id(g_timer_seg) = 0;
-                              id(g_duracao_seg) = 35;
-                              id(g_reles_bitmap) = (1ULL << 1);
-                              id(servo_2).write(1.0);
-                              lv_label_set_text(id(lbl_preparo_nome), "ARPEGGIO");
-                              char buf[32];
-                              snprintf(buf, sizeof(buf), "%d segundos restantes", id(g_duracao_seg));
-                              lv_label_set_text(id(lbl_preparo_timer), buf);
-                              lv_bar_set_value(id(bar_preparo_prog), 0, LV_ANIM_OFF);
-                          - lvgl.page.show: pg_preparo
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 2;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 35;
+                        id(g_reles_bitmap) = (1ULL << 1);
+                        lv_label_set_text(id(lbl_preparo_nome), "ARPEGGIO");
+                    - lvgl.page.show: pg_preparo
 
         # Card 3: Livanto
         - obj:
@@ -1035,24 +969,14 @@ lvgl:
                         text_font: onest_14
                         text_color: 0xFFFFFF
                   on_click:
-                    - if:
-                        condition:
-                          lambda: 'return !id(g_sessao_ativa);'
-                        then:
-                          - lambda: |-
-                              id(g_cafe_selecionado) = 3;
-                              id(g_sessao_ativa) = true;
-                              id(g_sessao_pausada) = false;
-                              id(g_timer_seg) = 0;
-                              id(g_duracao_seg) = 35;
-                              id(g_reles_bitmap) = (1ULL << 2);
-                              id(servo_3).write(1.0);
-                              lv_label_set_text(id(lbl_preparo_nome), "LIVANTO");
-                              char buf[32];
-                              snprintf(buf, sizeof(buf), "%d segundos restantes", id(g_duracao_seg));
-                              lv_label_set_text(id(lbl_preparo_timer), buf);
-                              lv_bar_set_value(id(bar_preparo_prog), 0, LV_ANIM_OFF);
-                          - lvgl.page.show: pg_preparo
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 3;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 35;
+                        id(g_reles_bitmap) = (1ULL << 2);
+                        lv_label_set_text(id(lbl_preparo_nome), "LIVANTO");
+                    - lvgl.page.show: pg_preparo
 
         # Card 4: Volluto
         - obj:
@@ -1158,24 +1082,14 @@ lvgl:
                         text_font: onest_14
                         text_color: 0xFFFFFF
                   on_click:
-                    - if:
-                        condition:
-                          lambda: 'return !id(g_sessao_ativa);'
-                        then:
-                          - lambda: |-
-                              id(g_cafe_selecionado) = 4;
-                              id(g_sessao_ativa) = true;
-                              id(g_sessao_pausada) = false;
-                              id(g_timer_seg) = 0;
-                              id(g_duracao_seg) = 35;
-                              id(g_reles_bitmap) = (1ULL << 3);
-                              id(servo_4).write(1.0);
-                              lv_label_set_text(id(lbl_preparo_nome), "VOLLUTO");
-                              char buf[32];
-                              snprintf(buf, sizeof(buf), "%d segundos restantes", id(g_duracao_seg));
-                              lv_label_set_text(id(lbl_preparo_timer), buf);
-                              lv_bar_set_value(id(bar_preparo_prog), 0, LV_ANIM_OFF);
-                          - lvgl.page.show: pg_preparo
+                    - lambda: |-
+                        id(g_cafe_selecionado) = 4;
+                        id(g_sessao_ativa) = true;
+                        id(g_timer_seg) = 0;
+                        id(g_duracao_seg) = 35;
+                        id(g_reles_bitmap) = (1ULL << 3);
+                        lv_label_set_text(id(lbl_preparo_nome), "VOLLUTO");
+                    - lvgl.page.show: pg_preparo
 
         # Footer
         - label:
@@ -1404,7 +1318,7 @@ lvgl:
             x: 0
             y: 180
             width: 1280
-            text: "LIBERANDO CÁPSULA"
+            text: "PREPARANDO SEU CAFÉ..."
             text_font: onest_20
             text_color: 0xFFFFFF
             text_align: CENTER
@@ -1427,7 +1341,7 @@ lvgl:
             height: 16
             bg_color: 0x1E1E1E
             indicator:
-              bg_color: 0xFF5C00
+              bg_color: 0x1F6FEB
             value: 0
             min_value: 0
             max_value: 100
