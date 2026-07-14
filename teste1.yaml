@@ -745,7 +745,7 @@ lvgl:
                         id(g_cafe_selecionado) = 1;
                         id(g_sessao_ativa) = true;
                         id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 25;
+                        id(g_duracao_seg) = 10;
                         id(g_reles_bitmap) = (1ULL << 0);
                         id(uart_arduino).write_str("SERVO1_ON\n");
                         lv_label_set_text(id(lbl_preparo_nome), "RISTRETTO");
@@ -859,7 +859,7 @@ lvgl:
                         id(g_cafe_selecionado) = 2;
                         id(g_sessao_ativa) = true;
                         id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 35;
+                        id(g_duracao_seg) = 10;
                         id(g_reles_bitmap) = (1ULL << 1);
                         id(uart_arduino).write_str("SERVO2_ON\n");
                         lv_label_set_text(id(lbl_preparo_nome), "ARPEGGIO");
@@ -973,7 +973,7 @@ lvgl:
                         id(g_cafe_selecionado) = 3;
                         id(g_sessao_ativa) = true;
                         id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 35;
+                        id(g_duracao_seg) = 10;
                         id(g_reles_bitmap) = (1ULL << 2);
                         id(uart_arduino).write_str("SERVO3_ON\n");
                         lv_label_set_text(id(lbl_preparo_nome), "LIVANTO");
@@ -1087,7 +1087,7 @@ lvgl:
                         id(g_cafe_selecionado) = 4;
                         id(g_sessao_ativa) = true;
                         id(g_timer_seg) = 0;
-                        id(g_duracao_seg) = 35;
+                        id(g_duracao_seg) = 10;
                         id(g_reles_bitmap) = (1ULL << 3);
                         id(uart_arduino).write_str("SERVO4_ON\n");
                         lv_label_set_text(id(lbl_preparo_nome), "VOLLUTO");

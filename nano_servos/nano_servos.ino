@@ -20,10 +20,10 @@ void setup() {
   ESPSerial.begin(9600);
   
   // Configurando os pinos dos servos
-  servo1.attach(6);
-  servo2.attach(7);
-  servo3.attach(8);
-  servo4.attach(9);
+  servo1.attach(9);
+  servo2.attach(8);
+  servo3.attach(7);
+  servo4.attach(6);
   
   // Inicializa na posição 0 graus
   servo1.write(0);
